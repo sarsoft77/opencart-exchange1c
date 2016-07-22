@@ -194,6 +194,7 @@ class ModelToolExchange1c extends Model {
 			$config_price_type_main = array_shift($config_price_type);
 		}
 
+		// Инициализируем типы цен
 		if ($xml->ПакетПредложений->ТипыЦен->ТипЦены) {
 			foreach ($xml->ПакетПредложений->ТипыЦен->ТипЦены as $key => $type) {
 				$price_types[(string)$type->Ид] = (string)$type->Наименование;
@@ -236,6 +237,13 @@ class ModelToolExchange1c extends Model {
 						$this->log->write("Товар: [UUID]:" . $data['1c_id']);
 	
 					$product_id = $this->getProductIdBy1CProductId ($uuid[0]);
+
+					if (empty($product_id)) {
+						if ($enable_log)
+							$this->log->write('Не найден товар в таблице product_to_1c по Ид 1С [UUID], пропускаем...');
+						continue;
+
+					}
 	
 					//Цена за единицу
 					if ($offer->Цены) {
