@@ -1077,7 +1077,7 @@ class ModelToolExchange1c extends Model {
 
 		$this->load->model('catalog/product');
 
-		if (isset($product['image']) && ($product['image'] == ModelToolExchange1c::EMPTY_IMAGE)) {
+		if (isset($product['image']) && ($product['image'] == ModelToolExchange1c::EMPTY_IMAGE) && ($product_old['image'] != '')) {
 			unset($product['image']);
 		}
 
