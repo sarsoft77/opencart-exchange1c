@@ -487,8 +487,8 @@ class ModelToolExchange1c extends Model {
 				$uuid = explode('#', (string)$product->Ид);
 				$data['1c_id'] = $uuid[0];
 
-				$data['model'] = $product->Артикул? (string)$product->Артикул : 'не задана';
-				$data['name'] = $product->Наименование? (string)$product->Наименование : 'не задано';
+				$data['model'] = ($product->Артикул && ((string)$product->Артикул != ''))? (string)$product->Артикул : 'не задана';
+				$data['name'] = ($product->Наименование && ((string)$product->Наименование != ''))? (string)$product->Наименование : 'не задано';
 				$data['weight'] = $product->Вес? (float)$product->Вес : null;
 				$data['sku'] = $product->Артикул? (string)$product->Артикул : '';
 
