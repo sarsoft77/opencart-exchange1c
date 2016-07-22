@@ -1096,8 +1096,28 @@ class ModelToolExchange1c extends Model {
 	 * @param 	string
 	 */
 	private function setSeoURL($url_type, $element_id, $element_name) {
-		$this->db->query("DELETE FROM `" . DB_PREFIX . "url_alias` WHERE `query` = '" . $url_type . "=" . $element_id . "'");
-		$this->db->query("INSERT INTO `" . DB_PREFIX . "url_alias` SET `query` = '" . $url_type . "=" . $element_id ."', `keyword`='" . $this->transString($element_name) . "'");
+		//$this->db->query("DELETE FROM `" . DB_PREFIX . "url_alias` WHERE `query` = '" . $url_type . "=" . $element_id . "'");
+		$query = $this->db->query("SELECT keyword FROM `" . DB_PREFIX . "url_alias` WHERE `query` = '" . $url_type . "=" . $element_id . "'");
+		if ($query->num_rows > 0) {
+			if ($query->row['keyword'] != '') {
+				return;
+			}
+		}
+		$cnt = 0;
+		$translited = $this->transString($element_name);
+		while (true) {
+			if ($cnt == 0) {
+				$keyword = $translited;
+			} else {
+				$keyword = $translited . $cnt;
+			}
+			$query = $this->db->query("SELECT keyword FROM `" . DB_PREFIX . "url_alias` WHERE `query` = '" . $url_type . "=" . $element_id . "' AND `keyword` = '" . $keyword . "'");
+			if ($query->num_rows == 0) {
+				$this->db->query("INSERT INTO `" . DB_PREFIX . "url_alias` SET `query` = '" . $url_type . "=" . $element_id . "', `keyword`='" . $keyword . "'");
+				break;
+			}
+			$cnt = $cnt + 1;
+		}
 	}
 
 	/**
