@@ -715,7 +715,8 @@ class ModelToolExchange1c extends Model {
 
 			//только если тип 'translit'
 			if ($this->config->get('exchange1c_seo_url') == 2) {
-				$cat_name = "category-" . $data['parent_id'] . "-" . $data['category_description'][$language_id]['name'];
+				//$cat_name = "category-" . $data['parent_id'] . "-" . $data['category_description'][$language_id]['name'];
+				$cat_name = $data['category_description'][$language_id]['name'] . "-" . $category_id;
 				$this->setSeoURL('category_id', $category_id, $cat_name);
 			}
 
