@@ -1026,7 +1026,8 @@ class ModelToolExchange1c extends Model {
 		if ($product_id){
 			//только если тип 'translit'
 			if ($this->config->get('exchange1c_seo_url') == 2) {
-				$this->setSeoURL('product_id', $product_id, $product['name']);
+				$prod_name = $product['name'] . '-' . $product_id;
+				$this->setSeoURL('product_id', $product_id, $prod_name);
 			}
 		}
 		return true;
