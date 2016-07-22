@@ -287,6 +287,16 @@ class ModelToolExchange1c extends Model {
 	
 					//Количество
 					$data['quantity'] = isset($offer->Количество) ? (int)$offer->Количество : 0;
+					if ($offer->Склад) {
+						$data['quantity'] = 0;
+						foreach ($offer->Склад as $i => $opt) {
+							$data['quantity'] += $opt['КоличествоНаСкладе'];
+							if ($enable_log)
+								$this->log->write('Склад: '.$opt['ИдСклада'].', остаток: '.$opt['КоличествоНаСкладе']);
+						}
+						if ($enable_log)
+							$this->log->write('Общий остаток по всем складам: '.$data['quantity']);
+					}
 				}
 
 				//Характеристики
