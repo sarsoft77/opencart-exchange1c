@@ -6,6 +6,8 @@ class ModelToolExchange1c extends Model {
 	private $PROPERTIES = array();
 	private $PRODUCT_IDS = null;
 
+	const EMPTY_IMAGE = 'no_image.jpg';
+
 
 	/**
 	 * Генерирует xml с заказами
@@ -493,6 +495,7 @@ class ModelToolExchange1c extends Model {
 				if ($enable_log)
 					$this->log->write("Найден товар:" . $data['name'] . " арт: " . $data['sku'] . "1C UUID: " . $data['1c_id']);
 
+				$data['image'] = '';
 				if ($product->Картинка) {
 					$data['image'] = $apply_watermark ? $this->applyWatermark((string)$product->Картинка[0]) : (string)$product->Картинка[0];
 					unset($product->Картинка[0]);
@@ -502,6 +505,9 @@ class ModelToolExchange1c extends Model {
 							'sort_order' => 0
 						);
 					}
+				}
+				if (!$data['image']) {
+					$data['image'] = ModelToolExchange1c::EMPTY_IMAGE;
 				}
 
 				if($product->ХарактеристикиТовара){
@@ -1070,6 +1076,10 @@ class ModelToolExchange1c extends Model {
 		}
 
 		$this->load->model('catalog/product');
+
+		if (isset($product['image']) && ($product['image'] == ModelToolExchange1c::EMPTY_IMAGE)) {
+			unset($product['image']);
+		}
 
 		$product_old = $this->initProduct($product, $product_old, $language_id);
 
