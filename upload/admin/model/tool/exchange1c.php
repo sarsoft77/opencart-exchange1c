@@ -497,12 +497,11 @@ class ModelToolExchange1c extends Model {
 
 				$data['image'] = '';
 				if ($product->Картинка) {
-					$img_file = 'data/' . (string)$product->Картинка[0];
-					$data['image'] = $apply_watermark ? $this->applyWatermark($img_file) : $img_file;
+					$data['image'] = $apply_watermark ? $this->applyWatermark((string)$product->Картинка[0]) : (string)$product->Картинка[0];
 					unset($product->Картинка[0]);
 					foreach ($product->Картинка as $image) {
 					  $data['product_image'][] =array(
-							'image' => $apply_watermark ? $this->applyWatermark('data/' . (string)$image) : 'data/' . (string)$image,
+							'image' => $apply_watermark ? $this->applyWatermark((string)$image) : (string)$image,
 							'sort_order' => 0
 						);
 					}
