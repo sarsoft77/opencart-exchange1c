@@ -6,6 +6,8 @@ class ModelToolExchange1c extends Model {
 	private $PROPERTIES = array();
 	private $PRODUCT_IDS = null;
 
+	const EMPTY_IMAGE = 'no_image.jpg';
+
 
 	/**
 	 * Генерирует xml с заказами
@@ -194,6 +196,7 @@ class ModelToolExchange1c extends Model {
 			$config_price_type_main = array_shift($config_price_type);
 		}
 
+		// Инициализируем типы цен
 		if ($xml->ПакетПредложений->ТипыЦен->ТипЦены) {
 			foreach ($xml->ПакетПредложений->ТипыЦен->ТипЦены as $key => $type) {
 				$price_types[(string)$type->Ид] = (string)$type->Наименование;
@@ -236,6 +239,13 @@ class ModelToolExchange1c extends Model {
 						$this->log->write("Товар: [UUID]:" . $data['1c_id']);
 	
 					$product_id = $this->getProductIdBy1CProductId ($uuid[0]);
+
+					if (empty($product_id)) {
+						if ($enable_log)
+							$this->log->write('Не найден товар в таблице product_to_1c по Ид 1С [UUID], пропускаем...');
+						continue;
+
+					}
 	
 					//Цена за единицу
 					if ($offer->Цены) {
@@ -279,6 +289,16 @@ class ModelToolExchange1c extends Model {
 	
 					//Количество
 					$data['quantity'] = isset($offer->Количество) ? (int)$offer->Количество : 0;
+					if ($offer->Склад) {
+						$data['quantity'] = 0;
+						foreach ($offer->Склад as $i => $opt) {
+							$data['quantity'] += $opt['КоличествоНаСкладе'];
+							if ($enable_log)
+								$this->log->write('Склад: '.$opt['ИдСклада'].', остаток: '.$opt['КоличествоНаСкладе']);
+						}
+						if ($enable_log)
+							$this->log->write('Общий остаток по всем складам: '.$data['quantity']);
+					}
 				}
 
 				//Характеристики
@@ -467,14 +487,15 @@ class ModelToolExchange1c extends Model {
 				$uuid = explode('#', (string)$product->Ид);
 				$data['1c_id'] = $uuid[0];
 
-				$data['model'] = $product->Артикул? (string)$product->Артикул : 'не задана';
-				$data['name'] = $product->Наименование? (string)$product->Наименование : 'не задано';
+				$data['model'] = ($product->Артикул && ((string)$product->Артикул != ''))? (string)$product->Артикул : 'не задана';
+				$data['name'] = ($product->Наименование && ((string)$product->Наименование != ''))? (string)$product->Наименование : 'не задано';
 				$data['weight'] = $product->Вес? (float)$product->Вес : null;
 				$data['sku'] = $product->Артикул? (string)$product->Артикул : '';
 
 				if ($enable_log)
 					$this->log->write("Найден товар:" . $data['name'] . " арт: " . $data['sku'] . "1C UUID: " . $data['1c_id']);
 
+				$data['image'] = '';
 				if ($product->Картинка) {
 					$data['image'] = $apply_watermark ? $this->applyWatermark((string)$product->Картинка[0]) : (string)$product->Картинка[0];
 					unset($product->Картинка[0]);
@@ -484,6 +505,9 @@ class ModelToolExchange1c extends Model {
 							'sort_order' => 0
 						);
 					}
+				}
+				if (!$data['image']) {
+					$data['image'] = ModelToolExchange1c::EMPTY_IMAGE;
 				}
 
 				if($product->ХарактеристикиТовара){
@@ -691,7 +715,8 @@ class ModelToolExchange1c extends Model {
 
 			//только если тип 'translit'
 			if ($this->config->get('exchange1c_seo_url') == 2) {
-				$cat_name = "category-" . $data['parent_id'] . "-" . $data['category_description'][$language_id]['name'];
+				//$cat_name = "category-" . $data['parent_id'] . "-" . $data['category_description'][$language_id]['name'];
+				$cat_name = $data['category_description'][$language_id]['name'] . "-" . $category_id;
 				$this->setSeoURL('category_id', $category_id, $cat_name);
 			}
 
@@ -1001,7 +1026,8 @@ class ModelToolExchange1c extends Model {
 		if ($product_id){
 			//только если тип 'translit'
 			if ($this->config->get('exchange1c_seo_url') == 2) {
-				$this->setSeoURL('product_id', $product_id, $product['name']);
+				$prod_name = $product['name'] . '-' . $product_id;
+				$this->setSeoURL('product_id', $product_id, $prod_name);
 			}
 		}
 		return true;
@@ -1053,6 +1079,10 @@ class ModelToolExchange1c extends Model {
 
 		$this->load->model('catalog/product');
 
+		if (isset($product['image']) && ($product['image'] == ModelToolExchange1c::EMPTY_IMAGE) && ($product_old['image'] != '')) {
+			unset($product['image']);
+		}
+
 		$product_old = $this->initProduct($product, $product_old, $language_id);
 
 		//Редактируем продукт
@@ -1067,8 +1097,28 @@ class ModelToolExchange1c extends Model {
 	 * @param 	string
 	 */
 	private function setSeoURL($url_type, $element_id, $element_name) {
-		$this->db->query("DELETE FROM `" . DB_PREFIX . "url_alias` WHERE `query` = '" . $url_type . "=" . $element_id . "'");
-		$this->db->query("INSERT INTO `" . DB_PREFIX . "url_alias` SET `query` = '" . $url_type . "=" . $element_id ."', `keyword`='" . $this->transString($element_name) . "'");
+		//$this->db->query("DELETE FROM `" . DB_PREFIX . "url_alias` WHERE `query` = '" . $url_type . "=" . $element_id . "'");
+		$query = $this->db->query("SELECT keyword FROM `" . DB_PREFIX . "url_alias` WHERE `query` = '" . $url_type . "=" . $element_id . "'");
+		if ($query->num_rows > 0) {
+			if ($query->row['keyword'] != '') {
+				return;
+			}
+		}
+		$cnt = 0;
+		$translited = $this->transString($element_name);
+		while (true) {
+			if ($cnt == 0) {
+				$keyword = $translited;
+			} else {
+				$keyword = $translited . $cnt;
+			}
+			$query = $this->db->query("SELECT keyword FROM `" . DB_PREFIX . "url_alias` WHERE `query` = '" . $url_type . "=" . $element_id . "' AND `keyword` = '" . $keyword . "'");
+			if ($query->num_rows == 0) {
+				$this->db->query("INSERT INTO `" . DB_PREFIX . "url_alias` SET `query` = '" . $url_type . "=" . $element_id . "', `keyword`='" . $keyword . "'");
+				break;
+			}
+			$cnt = $cnt + 1;
+		}
 	}
 
 	/**
@@ -1077,10 +1127,14 @@ class ModelToolExchange1c extends Model {
 	 * @return string type
 	 */
 	private function transString($aString) {
+		require_once('php-translit/Translit.php');
+
+		$string = Translit::object()->convert($aString, 'ru,uk,latin');
+
 		$rus = array(" ", "/", "*", "-", "+", "`", "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "_", "+", "[", "]", "{", "}", "~", ";", ":", "'", "\"", "<", ">", ",", ".", "?", "А", "Б", "В", "Г", "Д", "Е", "З", "И", "Й", "К", "Л", "М", "Н", "О", "П", "Р", "С", "Т", "У", "Ф", "Х", "Ъ", "Ы", "Ь", "Э", "а", "б", "в", "г", "д", "е", "з", "и", "й", "к", "л", "м", "н", "о", "п", "р", "с", "т", "у", "ф", "х", "ъ", "ы", "ь", "э", "ё",  "ж",  "ц",  "ч",  "ш",  "щ",   "ю",  "я",  "Ё",  "Ж",  "Ц",  "Ч",  "Ш",  "Щ",   "Ю",  "Я");
 		$lat = array("-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-",  "-", "-", "-", "-", "-", "-", "a", "b", "v", "g", "d", "e", "z", "i", "y", "k", "l", "m", "n", "o", "p", "r", "s", "t", "u", "f", "h", "",  "i", "",  "e", "a", "b", "v", "g", "d", "e", "z", "i", "j", "k", "l", "m", "n", "o", "p", "r", "s", "t", "u", "f", "h", "",  "i", "",  "e", "yo", "zh", "ts", "ch", "sh", "sch", "yu", "ya", "yo", "zh", "ts", "ch", "sh", "sch", "yu", "ya");
 
-		$string = str_replace($rus, $lat, $aString);
+		$string = str_replace($rus, $lat, $string);
 
 		while (mb_strpos($string, '--')) {
 			$string = str_replace('--', '-', $string);

@@ -506,13 +506,16 @@ class ControllerModuleExchange1c extends Controller {
 		$data = file_get_contents("php://input");
 
 		if ($data !== false) {
+			if (file_exists($uplod_file)) {
+				unlink($uplod_file);
+			}
 			if ($fp = fopen($uplod_file, "wb")) {
 				$result = fwrite($fp, $data);
 
 				if ($result === strlen($data)) {
 					echo "success\n";
 
-					chmod($uplod_file , 0777);
+					chmod($uplod_file , 0666);
 					//echo "success\n";
 				}
 				else {
